@@ -1,6 +1,6 @@
 NAME_SERVER = server
 NAME_CLIENT = client
-NAME_LIB = libft.a
+NAME_LIB = ft
 
 DIR_BUILD = build
 DIR_SRC = src
@@ -8,7 +8,7 @@ DIR_INC = inc
 DIR_LIB = libft
 
 INCLUDES_H = -I$(DIR_INC) -I$(DIR_LIB)
-INCLUDES_LIB = $(DIR_LIB)/$(NAME_LIB)
+INCLUDES_LIB = -L$(DIR_LIB) -l$(NAME_LIB)
 
 CC = cc
 CFLAGS = -Wall -Wextra -Werror
@@ -19,16 +19,20 @@ SRC_CLIENT = $(DIR_SRC)/client.c
 OBJ_SERVER = $(SRC_SERVER:.c=.o)
 OBJ_CLIENT = $(SRC_CLIENT:.c=.o)
 
-all: $(DIR_BUILD) $(DIR_BUILD)/$(NAME_SERVER) $(DIR_BUILD)/$(NAME_CLIENT) 
+BUILD_SERVER = $(DIR_BUILD)/$(NAME_SERVER)
+BUILD_CLIENT = $(DIR_BUILD)/$(NAME_CLIENT)
+BUILD_LIB = $(DIR_LIB)/lib$(NAME_LIB).a
+
+all: $(DIR_BUILD) $(BUILD_SERVER) $(BUILD_CLIENT)
 
 $(DIR_BUILD):
 	mkdir -p build
 
-$(DIR_BUILD)/$(NAME_SERVER): $(INCLUDES_LIB) $(OBJ_SERVER)
-	$(CC) $(CFLAGS) $(INCLUDES_H) $(INCLUDES_LIB) $(OBJ_SERVER) -o $(DIR_BUILD)/$(NAME_SERVER)
+$(BUILD_SERVER): $(BUILD_LIB) $(OBJ_SERVER)
+	$(CC) $(OBJ_SERVER) $(INCLUDES_LIB) -o $(BUILD_SERVER)
 
-$(DIR_BUILD)/$(NAME_CLIENT): $(INCLUDES_LIB) $(OBJ_CLIENT)
-	$(CC) $(CFLAGS) $(INCLUDES_H) $(INCLUDES_LIB) $(OBJ_SERVER) -o $(DIR_BUILD)/$(NAME_CLIENT) 
+$(BUILD_CLIENT): $(BUILD_LIB) $(OBJ_CLIENT)
+	$(CC) $(OBJ_CLIENT) $(INCLUDES_LIB) -o $(BUILD_CLIENT)
 
 $(OBJ_SERVER): %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES_H) -c $< -o $@ 
@@ -36,15 +40,15 @@ $(OBJ_SERVER): %.o: %.c
 $(OBJ_CLIENT): %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES_H) -c $< -o $@ 
 
-$(INCLUDES_LIB):
-	make -C libft
+$(BUILD_LIB):
+	make -C $(DIR_LIB)
 
 clean:
 	rm -f $(OBJ_SERVER) $(OBJ_CLIENT)
-	make -C libft fclean
+	make -C $(DIR_LIB) fclean
 
 fclean: clean
-	rm -rf build
+	rm -rf $(DIR_BUILD)
 
 re: fclean all
 
