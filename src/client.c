@@ -18,34 +18,56 @@ void	send_byte(int pid, uint8_t byte)
 	while (i < 8)
 	{
 		if (byte & (1 << i))
+		{
 			kill(pid, SIGUSR1);
+			if (usleep(1000000) == 0)
+			{
+				ft_printf("Server is not responding\n");
+			}
+		}
 		else
+		{
 			kill(pid, SIGUSR2);
+			if (usleep(1000000) == 0)
+			{
+				ft_printf("Server is not responding\n");
+			}
+		}
 		i++;
-		pause();
 	}
 }
 
-void send_int(int pid, uint32_t size)
+void send_number(int pid, unsigned long long size)
 {
 	int i;
 
 	i = 0;
-	while (i < 32)
+	while (i < 64)
 	{
 		if (size & (1 << i))
+		{
 			kill(pid, SIGUSR1);
-		else
+			if (usleep(1000000) == 0)
+			{
+				ft_printf("Server is not responding\n");
+			}
+		}
+		else 
+		{
 			kill(pid, SIGUSR2);
+			if (usleep(1000000) == 0)
+			{
+				ft_printf("Server is not responding\n");
+			}
+		}
 		i++;
-		pause();
 	}
 }
 
 int main(int argc, char **argv)
 {
-	int size;
-	int pid;
+	unsigned long long	size;
+	int 				pid;
 
 	signal(SIGUSR1, sig_handler);
 	if (argc != 3)
@@ -56,7 +78,7 @@ int main(int argc, char **argv)
 	size = ft_strlen(argv[2]);
 	pid = atoi(argv[1]);
 
-	send_int(pid, size);
+	send_number(pid, size);
 	while (*argv[2])
 	{
 		send_byte(pid, *argv[2]);
