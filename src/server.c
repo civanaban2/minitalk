@@ -1,121 +1,98 @@
 #include "server.h"
 #include <stdio.h>
 
-void	set_bit(uint8_t *message, uint8_t bit, int signum)
+void comm_init(t_package *package, siginfo_t *info)
 {
-	if (signum == SIGUSR1)
-		*message |= (1 << bit);
-	else if (signum == SIGUSR2)
-		*message &= ~(1 << bit);
+	package->pid = info->si_pid;
+	package->status = 0x01;
 }
 
-void	set_int(uint64_t *size, uint8_t bit, int signum)
+void get_length(t_package *package, int signum)
 {
-	if (signum == SIGUSR1)
-		*size |= (1 << bit);
-	else if (signum == SIGUSR2)
-		*size &= ~(1 << bit);
+	static __uint8_t bit_count;
+
+	if (bit_count < sizeof(size_t) * 8)
+	{
+		if (signum == SIGUSR1){
+			package->size |= (1 << bit_count);
+			printf("1");
+		}
+		else if (signum == SIGUSR2){
+			package->size &= ~(1 << bit_count);
+			printf("0");
+		}
+		bit_count++;
+	}
+	if (bit_count == sizeof(size_t) * 8)
+	{
+		printf("Message size: %lu\n", package->size);
+		package->message = (char *)malloc(package->size + 1);
+		if (!package->message)
+		{
+			ft_printf("Error: malloc failed\n");
+			exit(1);
+		}
+		bit_count = 0;
+		package->status = 0x02;
+	}
 }
 
-void	signal_handler(int signum, siginfo_t *info, void *context)
+void get_message(t_package *package, int signum)
 {
-	static unsigned long long	size;
-	static uint8_t				bit;
-	static uint8_t				*message;
-	static uint8_t				status;
-	static uint8_t				*tmp;
+	static __uint8_t bit_count;
+	static size_t size;
+
+	if (bit_count < sizeof(char) * 8)
+	{
+		if (signum == SIGUSR1)
+			package->message[size] |= (1 << bit_count);
+		else if (signum == SIGUSR2)
+			package->message[size] &= ~(1 << bit_count);
+		bit_count++;
+	}
+	if (bit_count == sizeof(char) * 8)
+	{
+		size++;
+		bit_count = 0;
+	}
+	if (size == package->size)
+	{
+		package->message[size] = '\0';
+		ft_printf("Received message: %s\n", package->message);
+		free(package->message);
+		package->message = NULL;
+		package->status = 0x00;
+		size = 0;
+	}
+}
+
+void signal_handler(int signum, siginfo_t *info, void *context)
+{
+	static t_package package;
 
 	(void)context;
-
-
-	if (info->si_pid == getpid())
+	if (package.status == 0x00)
 	{
-		bit = 0;
-		size = 0;
-		status = 0x00;
-		if (message)
-			free(message);
-		message = NULL;
-		tmp = NULL;
-		return ;
+		printf("burdayim oc\n");
+		comm_init(&package, info);
 	}
-
-	if (status == 0x00)
-	{
-		if (bit < 64)
-		{
-			set_int(&size, bit, signum);
-			bit++;
-		}
-		if (bit == 64)
-		{
-			message = (uint8_t *)malloc(size + 1);
-			if (!message)
-			{
-				ft_printf("Error: malloc failed\n");
-				exit(1);
-			}
-			printf("Message size: %llu\n", size);
-			tmp = message;
-			bit = 0;
-			status = 0x01;
-		}
-		if (kill(info->si_pid, SIGUSR1) == -1)
-		{
-			ft_printf("Error: kill failed\n");
-			exit(1);
-		}
-	}
-	else if (status == 0x01)
-	{
-		if (bit < 8)
-		{
-			set_bit(tmp, bit, signum);
-			bit++;
-		}
-		if (bit == 8)
-		{
-			tmp++;
-			bit = 0;
-			size--;
-		}
-		if (size == 0)
-		{
-			*tmp = '\0';
-			bit = 0;
-			status = 0x00;
-			size = 0;
-			ft_printf("Received message: %s\n", message);
-			free(message);
-			message = NULL;
-			tmp = NULL;
-		}
-		if (kill(info->si_pid, SIGUSR1) == -1)
-		{
-			ft_printf("Error: kill failed\n");
-			exit(1);
-		}
-	}
-
+	else if (package.status == 0x01 && package.pid == info->si_pid)
+		get_length(&package, signum);
+	else if (package.status == 0x02 && package.pid == info->si_pid)
+		get_message(&package, signum);
+	kill(info->si_pid, SIGUSR1);
 }
 
-int	main(void)
+int main(void)
 {
-	struct sigaction	sa;
-	int timer;
-
+	struct sigaction sa;
 	sa.sa_flags = SA_SIGINFO;
 	sa.sa_sigaction = signal_handler;
 	sigaction(SIGUSR1, &sa, NULL);
 	sigaction(SIGUSR2, &sa, NULL);
+
 	ft_printf("Server PID: %d\n", getpid());
-	while (1) {
-		timer = usleep(1000000);
-		if (timer == 0)
-		{
-			ft_printf("Client doesnt respond, server restarting.\n");
-			kill(getpid(), SIGUSR1);
-		}
-	}
+	while (1)
+		pause();
 	return (0);
 }
