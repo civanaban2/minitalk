@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   client.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: urmet <urmet@student.42.fr>                +#+  +:+       +#+        */
+/*   By: cari <cari@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/12 15:34:26 by urmet             #+#    #+#             */
-/*   Updated: 2025/03/12 21:38:01 by urmet            ###   ########.fr       */
+/*   Updated: 2025/03/13 16:56:27 by cari             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,21 +15,11 @@
 
 void	*g_ptr;
 
-int	tf_strlen(const char *s)
-{
-	int	i;
-
-	i = 0;
-	while (*s++)
-		i++;
-	return (i);
-}
-
 void	comm_init(t_package *package, int pid, void *message)
 {
 	package->pid = pid;
 	package->message = (char *)message;
-	package->size = tf_strlen(message);
+	package->size = (int) ft_strlen(message);
 	package->status = 0x01;
 }
 
@@ -39,20 +29,16 @@ void	send_length(t_package *package)
 
 	if (i < 32)
 	{
-		if (package->size & (1 << i)){
+		if (package->size & (1 << i))
 			kill(package->pid, SIGUSR1);
-			printf("1");}
-			
-		else{
+		else
 			kill(package->pid, SIGUSR2);
-			printf("0");}
 		i++;
 	}
 	if (i == 32)
 	{
 		package->status = 0x02;
 		i = 0;
-		printf("sended");
 	}
 }
 
@@ -77,6 +63,8 @@ void	send_message(t_package *package)
 			j = 0;
 		}
 	}
+	if (i == package->size)
+		package->status = 0x03;
 }
 
 void	signal_handler(int signum, siginfo_t *info, void *context)
@@ -85,16 +73,17 @@ void	signal_handler(int signum, siginfo_t *info, void *context)
 
 	(void)context;
 	(void)signum;
-	if (package.status == 0x00){
+	if (package.status == 0x00)
 		comm_init(&package, info->si_pid, g_ptr);
-		printf("comm_init\n");}
-	if (package.status == 0x01) {
-		ft_printf("message length: %d\n", package.size);
+	if (package.status == 0x01)
 		send_length(&package);
-		printf("send_length\n");}
-	if (package.status == 0x02){
+	if (package.status == 0x02)
 		send_message(&package);
-		printf("send_message\n");}
+	if (package.status == 0x03)
+	{
+		ft_printf("Message sent\n");
+		exit(0);
+	}
 }
 
 int	main(int argc, char const *argv[])
