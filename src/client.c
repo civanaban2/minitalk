@@ -6,12 +6,11 @@
 /*   By: cari <cari@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/12 15:34:26 by urmet             #+#    #+#             */
-/*   Updated: 2025/03/13 16:56:27 by cari             ###   ########.fr       */
+/*   Updated: 2025/03/13 22:41:41 by cari             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "client.h"
-#include <stdio.h>
+#include "minitalk.h"
 
 void	*g_ptr;
 
@@ -25,45 +24,42 @@ void	comm_init(t_package *package, int pid, void *message)
 
 void	send_length(t_package *package)
 {
-	static int	i;
-
-	if (i < 32)
+	if (package->bit_count < 32)
 	{
-		if (package->size & (1 << i))
+		if (package->size & (1 << package->bit_count))
 			kill(package->pid, SIGUSR1);
 		else
 			kill(package->pid, SIGUSR2);
-		i++;
+		package->bit_count++;
 	}
-	if (i == 32)
+	if (package->bit_count == 32)
 	{
 		package->status = 0x02;
-		i = 0;
+		package->bit_count = 0;
 	}
 }
 
 void	send_message(t_package *package)
 {
-	static int	i;
-	static int	j;
-
-	if (i < package->size)
+	if (package->size == 0)
+		kill(package->pid, SIGUSR1);
+	if (package->index < package->size)
 	{
-		if (j < 8)
+		if (package->bit_count < 8)
 		{
-			if (package->message[i] & (1 << j))
+			if (package->message[package->index] & (1 << package->bit_count))
 				kill(package->pid, SIGUSR1);
 			else
 				kill(package->pid, SIGUSR2);
-			j++;
+			package->bit_count++;
 		}
-		if (j == 8)
+		if (package->bit_count == 8)
 		{
-			i++;
-			j = 0;
+			package->index++;
+			package->bit_count = 0;
 		}
 	}
-	if (i == package->size)
+	if (package->index == package->size)
 		package->status = 0x03;
 }
 
@@ -77,9 +73,9 @@ void	signal_handler(int signum, siginfo_t *info, void *context)
 		comm_init(&package, info->si_pid, g_ptr);
 	if (package.status == 0x01)
 		send_length(&package);
-	if (package.status == 0x02)
+	else if (package.status == 0x02)
 		send_message(&package);
-	if (package.status == 0x03)
+	else if (package.status == 0x03)
 	{
 		ft_printf("Message sent\n");
 		exit(0);
