@@ -6,12 +6,11 @@
 /*   By: cari <cari@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/12 15:15:49 by urmet             #+#    #+#             */
-/*   Updated: 2025/03/13 18:09:32 by cari             ###   ########.fr       */
+/*   Updated: 2025/03/13 22:41:46 by cari             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "server.h"
-#include <stdio.h>
+#include "minitalk.h"
 
 void	comm_init(t_package *package, siginfo_t *info)
 {
