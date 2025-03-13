@@ -3,77 +3,116 @@
 /*                                                        :::      ::::::::   */
 /*   client.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cari <cari@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: urmet <urmet@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/03/12 01:12:46 by cari              #+#    #+#             */
-/*   Updated: 2025/03/12 03:37:42 by cari             ###   ########.fr       */
+/*   Created: 2025/03/12 15:34:26 by urmet             #+#    #+#             */
+/*   Updated: 2025/03/12 21:38:01 by urmet            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "client.h"
+#include <stdio.h>
 
-void	sig_handler(int signum)
-{
-	if (signum == SIGUSR1)
-		return ;
-	else if (signum == SIGUSR2)
-		exit(1);
-}
+void	*g_ptr;
 
-void	send_bits(int pid, void *data, int bit_count)
+int	tf_strlen(const char *s)
 {
-	int i;
+	int	i;
 
 	i = 0;
-	if (bit_count == 8)
+	while (*s++)
+		i++;
+	return (i);
+}
+
+void	comm_init(t_package *package, int pid, void *message)
+{
+	package->pid = pid;
+	package->message = (char *)message;
+	package->size = tf_strlen(message);
+	package->status = 0x01;
+}
+
+void	send_length(t_package *package)
+{
+	static int	i;
+
+	if (i < 32)
 	{
-		while (i < 8)
-		{
-			if (*((char *)data) & (1 << i)){
-				kill(pid, SIGUSR1);
-				ft_printf("1");}
-			else{
-				kill(pid, SIGUSR2);
-				ft_printf("0");}
-			i++;
-			pause();
-		}
+		if (package->size & (1 << i)){
+			kill(package->pid, SIGUSR1);
+			printf("1");}
+			
+		else{
+			kill(package->pid, SIGUSR2);
+			printf("0");}
+		i++;
 	}
-	else if (bit_count == sizeof(unsigned long) * 8)
+	if (i == 32)
 	{
-		while (i < bit_count)
+		package->status = 0x02;
+		i = 0;
+		printf("sended");
+	}
+}
+
+void	send_message(t_package *package)
+{
+	static int	i;
+	static int	j;
+
+	if (i < package->size)
+	{
+		if (j < 8)
 		{
-			if (*((unsigned long *)data) & (1 << i)){
-				kill(pid, SIGUSR1);
-				ft_printf("1");}
-				
-			else{
-				kill(pid, SIGUSR2);
-				ft_printf("0");}
+			if (package->message[i] & (1 << j))
+				kill(package->pid, SIGUSR1);
+			else
+				kill(package->pid, SIGUSR2);
+			j++;
+		}
+		if (j == 8)
+		{
 			i++;
-			pause();
+			j = 0;
 		}
 	}
 }
 
-int main(int argc, char **argv)
+void	signal_handler(int signum, siginfo_t *info, void *context)
 {
-	int pid;
-	unsigned long size;
+	static t_package	package;
 
-	signal(SIGUSR1, sig_handler);
-	signal(SIGUSR2, sig_handler);
+	(void)context;
+	(void)signum;
+	if (package.status == 0x00){
+		comm_init(&package, info->si_pid, g_ptr);
+		printf("comm_init\n");}
+	if (package.status == 0x01) {
+		ft_printf("message length: %d\n", package.size);
+		send_length(&package);
+		printf("send_length\n");}
+	if (package.status == 0x02){
+		send_message(&package);
+		printf("send_message\n");}
+}
+
+int	main(int argc, char const *argv[])
+{
+	struct sigaction	sa;
+
 	if (argc != 3)
 	{
 		ft_printf("Usage: %s <server-pid> <message>\n", argv[0]);
-		return 1;
+		return (1);
 	}
-	size = ft_strlen(argv[2]);
-	pid = atoi(argv[1]);
-	kill(pid, SIGUSR1);
-	send_bits(pid, (void *)&size, sizeof(unsigned long) * 8);
-	while (*argv[2])
-		send_bits(pid, (void *)argv[2]++, 8);
-
-	return 0;
+	sa.sa_flags = SA_SIGINFO;
+	sa.sa_sigaction = signal_handler;
+	sigaction(SIGUSR1, &sa, NULL);
+	sigaction(SIGUSR2, &sa, NULL);
+	g_ptr = (void *)argv[2];
+	kill(ft_atoi(argv[1]), SIGUSR1);
+	while (1)
+		pause();
+	return (0);
 }
