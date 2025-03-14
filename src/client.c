@@ -85,11 +85,19 @@ void	signal_handler(int signum, siginfo_t *info, void *context)
 int	main(int argc, char const *argv[])
 {
 	struct sigaction	sa;
+	int					i;
 
 	if (argc != 3)
 	{
 		ft_printf("Usage: %s <server-pid> <message>\n", argv[0]);
 		return (1);
+	}
+	i = 1;
+	while (argv[1][i])
+	{
+		if (!ft_isdigit(argv[1][i]))
+			return (1);
+		i++;
 	}
 	sa.sa_flags = SA_SIGINFO;
 	sa.sa_sigaction = signal_handler;
