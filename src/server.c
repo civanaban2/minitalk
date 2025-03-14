@@ -61,8 +61,8 @@ void	get_message(t_package *package, int signum)
 	}
 	if (package->index == package->size)
 	{
-		package->message[package->index] = '\0';
-		ft_printf("%s\n", package->message);
+		package->message[package->index] = '\n';
+		write(1, package->message, package->size +1);
 		free(package->message);
 		package->message = NULL;
 		package->status = 0x00;
